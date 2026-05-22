@@ -182,14 +182,12 @@
             display: flex;
         }
 
-        /* На ПК (шире 768px) — скрываем кнопки */
         @media (min-width: 769px) {
             .touch-controls {
                 display: none !important;
             }
         }
 
-        /* На телефонах — показываем */
         @media (max-width: 768px) {
             .touch-controls.show {
                 display: flex;
@@ -282,7 +280,7 @@
         <button class="btn" id="startBtn">▶ НАЧАТЬ КОШМАР</button>
     </div>
 
-    <div id="prolog">
+    <div id="prolog" style="display: none;">
         <div id="prolog-text-container">
             <p id="prologText"></p>
         </div>
@@ -328,6 +326,12 @@
         let GRID = 12;
         let CELL = 60;
 
+        // Загружаем текстуру ключа
+        const keyImage = new Image();
+        keyImage.src = "https://static.vecteezy.com/system/resources/previews/010/463/909/non_2x/pixel-old-key-for-games-free-vector.jpg";
+        let keyTextureLoaded = false;
+        keyImage.onload = () => { keyTextureLoaded = true; if (gameStarted && !gameOver) draw(); };
+
         let player = { x: 2, y: 2 };
         let car = { x: 9, y: 9 };
         let keysItem = { x: 5, y: 5, picked: false };
@@ -341,6 +345,7 @@
         let gameOver = false;
         let gameStarted = false;
         let animationInterval = null;
+        let gameEnded = false;
 
         let lastMonsterMove = Date.now();
         let lastCarDist = 999;
@@ -467,6 +472,22 @@
             ctx.stroke();
         }
 
+        function drawKey(x, y) {
+            const kx = x * CELL;
+            const ky = y * CELL;
+            const size = CELL;
+            
+            if (keyTextureLoaded && keyImage.complete && keyImage.naturalWidth > 0) {
+                ctx.drawImage(keyImage, kx + 5, ky + 5, size - 10, size - 10);
+            } else {
+                ctx.fillStyle = '#ffdd00';
+                ctx.fillRect(kx + size*0.25, ky + size*0.25, size*0.5, size*0.5);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(kx + size*0.4, ky + size*0.3, size*0.2, size*0.4);
+                ctx.fillRect(kx + size*0.45, ky + size*0.2, size*0.1, size*0.2);
+            }
+        }
+
         function draw() {
             if (gameOver || !gameStarted) return;
             
@@ -506,8 +527,7 @@
             if (isPlayerVisible(car.x, car.y)) drawCar(car.x, car.y, '#b30000');
 
             if (!keysItem.picked && isPlayerVisible(keysItem.x, keysItem.y)) {
-                ctx.fillStyle = '#ffdd00';
-                ctx.fillRect(keysItem.x*CELL + CELL*0.25, keysItem.y*CELL + CELL*0.25, CELL*0.5, CELL*0.5);
+                drawKey(keysItem.x, keysItem.y);
             }
 
             if (monster.active && isMonsterVisible(monster.x, monster.y)) {
@@ -537,7 +557,7 @@
             }
         }
 
-        // ====================== ДВИЖЕНИЕ МОНСТРА ======================
+        // ====================== ДВИЖЕНИЕ МОНСТРА (БЕЗ УСКОРЕНИЯ) ======================
         function getNextMonsterMove() {
             const dirs = [
                 [Math.sign(player.x - monster.x), Math.sign(player.y - monster.y)],
@@ -556,46 +576,63 @@
         function moveMonster() {
             if (!monster.active || gameOver || !gameStarted) return;
             if (Date.now() - lastMonsterMove < 680) return;
-            let steps = distance(monster, player) <= 3 ? 2 : 1;
-            for (let i = 0; i < steps; i++) {
-                const next = getNextMonsterMove();
-                if (next) { monster.x = next.x; monster.y = next.y; }
-                if (monster.x === player.x && monster.y === player.y) {
-                    gameOver = true;
-                    gameStarted = false;
-                    showEnding(false, false);
-                    return;
-                }
+            
+            // Всегда только один шаг за ход
+            const next = getNextMonsterMove();
+            if (next) { 
+                monster.x = next.x; 
+                monster.y = next.y; 
+            }
+            if (monster.x === player.x && monster.y === player.y) {
+                gameOver = true;
+                gameStarted = false;
+                gameEnded = true;
+                showEnding(false, false);
+                return;
             }
             lastMonsterMove = Date.now();
             draw();
         }
 
-        // ====================== КОНЦОВКИ ======================
+        // ====================== КОНЦОВКИ (УЛУЧШЕННЫЕ) ======================
         function drawEndingImage(type, ctx, w, h) {
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, w, h);
             
             if (type === 'good') {
-                ctx.fillStyle = '#ffdd88';
-                ctx.fillRect(w*0.25, h*0.55, w*0.5, h*0.25);
+                ctx.fillStyle = '#2a1a0a';
+                ctx.fillRect(0, h*0.6, w, h*0.4);
+                for (let i = 0; i < 50; i++) {
+                    ctx.fillStyle = '#ffaa44';
+                    ctx.fillRect(w*0.1 + i*15, h*0.55, 5, 15);
+                }
                 ctx.fillStyle = '#b30000';
                 ctx.fillRect(w*0.35, h*0.35, w*0.3, h*0.25);
-                ctx.fillStyle = '#fff';
+                ctx.fillStyle = '#ffdd88';
                 ctx.fillRect(w*0.45, h*0.4, w*0.05, h*0.1);
                 ctx.fillRect(w*0.5, h*0.4, w*0.05, h*0.1);
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(w*0.7, h*0.45, w*0.08, h*0.08);
+                ctx.fillRect(w*0.71, h*0.46, w*0.06, h*0.06);
             } 
             else if (type === 'secret') {
+                ctx.fillStyle = '#0a0a2a';
+                ctx.fillRect(0, 0, w, h);
                 ctx.fillStyle = '#b30000';
                 ctx.fillRect(w*0.25, h*0.45, w*0.5, h*0.3);
-                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.fillStyle = 'rgba(255,255,200,0.6)';
                 ctx.fillRect(w*0.45, h*0.48, w*0.1, h*0.25);
                 ctx.fillStyle = '#ffdd88';
-                ctx.font = `${h*0.08}px monospace`;
-                ctx.fillText("???", w*0.48, h*0.6);
+                ctx.font = `${h*0.1}px monospace`;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#ffaa00';
+                ctx.fillText("???", w*0.47, h*0.62);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                ctx.fillRect(w*0.3, h*0.2, w*0.4, h*0.25);
             } 
             else {
-                ctx.fillStyle = '#2a0000';
+                ctx.fillStyle = '#1a0000';
                 ctx.fillRect(0, 0, w, h);
                 ctx.fillStyle = '#2a2a2a';
                 ctx.fillRect(w*0.4, h*0.3, w*0.2, h*0.4);
@@ -607,6 +644,10 @@
                 ctx.fillStyle = '#555';
                 ctx.fillRect(w*0.3, h*0.55, w*0.1, h*0.08);
                 ctx.fillRect(w*0.6, h*0.55, w*0.1, h*0.08);
+                for (let i = 0; i < 12; i++) {
+                    ctx.fillStyle = '#880000';
+                    ctx.fillRect(w*0.2 + i*35, h*0.75, 15, 8);
+                }
             }
         }
 
@@ -656,12 +697,21 @@
             }
             
             if (endScreen) endScreen.style.display = 'flex';
+            gameEnded = true;
+            
+            // Показываем пролог после концовки
+            setTimeout(() => {
+                if (gameEnded) {
+                    showPrologueAfterEnd();
+                }
+            }, 3000);
         }
 
         function returnToMenu() {
             stopGameLoop();
             gameStarted = false;
             gameOver = false;
+            gameEnded = false;
             
             const endScreen = document.getElementById('end-screen');
             const gameContainer = document.getElementById('game-container');
@@ -688,6 +738,39 @@
             }
         }
 
+        // ====================== ПРОЛОГ ======================
+        function showPrologue(callback) {
+            const prologDiv = document.getElementById('prolog');
+            prologDiv.style.display = 'flex';
+            prologDiv.style.opacity = '1';
+            document.getElementById('prologText').innerHTML = `Поздний вечер. Ты спускаешься на парковку торгового центра. Ключи выпадают из рук и теряются где-то на парковке. Когда ты поднимаешь голову... вокруг уже не та парковка. Те же машины, те же колонны, но всё словно выцвело. И ты не один. Где-то здесь твоя машина. Найди ключи. Не смотри в темноту.`;
+            
+            const prologContainer = document.getElementById('prolog-text-container');
+            const clickHandler = () => {
+                prologDiv.style.opacity = '0';
+                setTimeout(() => {
+                    prologDiv.style.display = 'none';
+                    prologDiv.style.opacity = '1';
+                    if (callback) callback();
+                }, 300);
+                prologContainer.removeEventListener('click', clickHandler);
+            };
+            prologContainer.addEventListener('click', clickHandler);
+        }
+
+        function showPrologueAfterEnd() {
+            showPrologue(() => {
+                const gameContainer = document.getElementById('game-container');
+                const touchControls = document.getElementById('touchControls');
+                const restartBtn = document.getElementById('restartBtn');
+                if (gameContainer) gameContainer.style.display = 'flex';
+                if (touchControls) touchControls.classList.add('show');
+                if (restartBtn) restartBtn.classList.add('show');
+                initGame();
+                gameEnded = false;
+            });
+        }
+
         // ====================== ДВИЖЕНИЕ ИГРОКА ======================
         function move(dx, dy) {
             if (gameOver || !gameStarted) return;
@@ -706,6 +789,7 @@
                 if (keysItem.picked) {
                     gameOver = true;
                     gameStarted = false;
+                    gameEnded = true;
                     setTimeout(() => showEnding(true, !hasTeleported), 50);
                 } else {
                     showMessage("ДВЕРЬ ЗАПЕРТА. НУЖНЫ КЛЮЧИ", "#ff6666");
@@ -782,33 +866,22 @@
             showMessage("ИГРА ПЕРЕЗАПУЩЕНА", "#ffaa00", 1500);
         }
 
-        // ====================== ПРОЛОГ ======================
-        function startProlog() {
+        // ====================== ОБНОВЛЁННЫЙ СТАРТ (С ПРОЛОГОМ) ======================
+        function startGame() {
             const menu = document.getElementById('menu');
             menu.style.opacity = '0';
             setTimeout(() => {
                 menu.style.display = 'none';
-                const prolog = document.getElementById('prolog');
-                prolog.style.display = 'flex';
-                document.getElementById('prologText').innerHTML = `Поздний вечер. Ты спускаешься на парковку торгового центра. Ключи выпадают из рук и теряются где-то на парковке. Когда ты поднимаешь голову... вокруг уже не та парковка. Те же машины, те же колонны, но всё словно выцвело. И ты не один. Где-то здесь твоя машина. Найди ключи. Не смотри в темноту.`;
-                
-                const prologContainer = document.getElementById('prolog-text-container');
-                const clickHandler = () => {
-                    prolog.style.opacity = '0';
-                    setTimeout(() => {
-                        prolog.style.display = 'none';
-                        const gameContainer = document.getElementById('game-container');
-                        const touchControls = document.getElementById('touchControls');
-                        const restartBtn = document.getElementById('restartBtn');
-                        if (gameContainer) gameContainer.style.display = 'flex';
-                        if (touchControls) touchControls.classList.add('show');
-                        if (restartBtn) restartBtn.classList.add('show');
-                        initGame();
-                    }, 1300);
-                    prologContainer.removeEventListener('click', clickHandler);
-                };
-                prologContainer.addEventListener('click', clickHandler);
-            }, 800);
+                showPrologue(() => {
+                    const gameContainer = document.getElementById('game-container');
+                    const touchControls = document.getElementById('touchControls');
+                    const restartBtn = document.getElementById('restartBtn');
+                    if (gameContainer) gameContainer.style.display = 'flex';
+                    if (touchControls) touchControls.classList.add('show');
+                    if (restartBtn) restartBtn.classList.add('show');
+                    initGame();
+                });
+            }, 300);
         }
 
         // ====================== УПРАВЛЕНИЕ ======================
@@ -816,14 +889,30 @@
             if (!gameStarted || gameOver) return;
             let dx = 0, dy = 0;
             const key = e.key;
-            if (key === 'ArrowUp') dy = -1;
-            else if (key === 'ArrowDown') dy = 1;
-            else if (key === 'ArrowLeft') dx = -1;
-            else if (key === 'ArrowRight') dx = 1;
-            else if (key === 'w') dy = -1;
+            if (key === 'w') dy = -1;
             else if (key === 's') dy = 1;
             else if (key === 'a') dx = -1;
             else if (key === 'd') dx = 1;
+
+            else if (key === 'ArrowUp') dy = -1;
+            else if (key === 'ArrowDown') dy = 1;
+            else if (key === 'ArrowLeft') dx = -1;
+            else if (key === 'ArrowRight') dx = 1;
+
+            else if (key === 'ц') dy = -1;
+            else if (key === 'ы') dy = 1;
+            else if (key === 'ф') dx = -1;
+            else if (key === 'в') dx = 1;
+
+            else if (key === 'Ц') dy = -1;
+            else if (key === 'Ы') dy = 1;
+            else if (key === 'Ф') dx = -1;
+            else if (key === 'В') dx = 1;
+
+            else if (key === 'W') dy = -1;
+            else if (key === 'S') dy = 1;
+            else if (key === 'A') dx = -1;
+            else if (key === 'D') dx = 1;
 
             if (dx !== 0 || dy !== 0) {
                 e.preventDefault();
@@ -836,10 +925,10 @@
             if (gameStarted && !gameOver) updateCanvasSize();
         });
 
-        document.getElementById('startBtn').addEventListener('click', startProlog);
+        document.getElementById('startBtn').addEventListener('click', startGame);
         const menuBtn = document.getElementById('menuBtn');
         if (menuBtn) {
-            menuBtn.addEventListener('click', returnToMenu);
+            menuBtn.addEventListener('click', () => returnToMenu());
         }
         const restartBtnEl = document.getElementById('restartBtn');
         if (restartBtnEl) {
