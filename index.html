@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ЗАБЫТЫЕ КЛЮЧИ</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #ccc;
+            font-family: 'Press Start 2P', system-ui;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+
+        .game-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #container {
+            position: relative;
+            width: min(90vw, 90vh, 720px);
+            height: min(90vw, 90vh, 720px);
+        }
+
+        canvas {
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+            background: #0a0a0a;
+            border: 8px solid #330000;
+            box-shadow: 0 0 40px #880000;
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        #menu, #prolog, #end-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #1a0000 0%, #000 70%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: opacity 0.8s ease;
+        }
+
+        #prolog, #end-screen, #game-container {
+            display: none;
+        }
+
+        .title {
+            font-size: clamp(24px, 8vw, 52px);
+            color: #ff2222;
+            text-shadow: 0 0 15px #ff0000, 0 0 30px #ff0000;
+            animation: glitch 1.8s infinite;
+            margin-bottom: 20px;
+            letter-spacing: 6px;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        .subtitle {
+            font-size: clamp(10px, 3vw, 15px);
+            color: #aaa;
+            margin-bottom: 50px;
+            text-align: center;
+            line-height: 1.5;
+            padding: 0 20px;
+        }
+
+        .btn {
+            margin: 12px;
+            padding: clamp(12px, 4vw, 18px) clamp(30px, 8vw, 45px);
+            font-size: clamp(14px, 4vw, 18px);
+            background: transparent;
+            color: #ffdd00;
+            border: 4px solid #ffdd00;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-family: 'Press Start 2P', monospace;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+            background: #ff2200;
+            color: white;
+        }
+
+        @keyframes glitch {
+            0%,100% { transform: translate(0); }
+            20% { transform: translate(-3px, 3px); }
+            40% { transform: translate(3px, -3px); }
+        }
+
+        #message {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20,0,0,0.95);
+            padding: clamp(8px, 3vw, 14px) clamp(15px, 5vw, 28px);
+            border: 3px solid #ff4444;
+            color: #ffdd88;
+            font-size: clamp(10px, 3vw, 16px);
+            z-index: 200;
+            opacity: 0;
+            transition: all 0.4s;
+            text-align: center;
+            min-width: 200px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        @media (max-width: 600px) {
+            #message {
+                white-space: normal;
+                min-width: 150px;
+                max-width: 90%;
+            }
+        }
+
+        .click-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #666;
+            font-size: clamp(8px, 3vw, 12px);
+            font-family: 'Press Start 2P', monospace;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        #prolog-text-container {
+            max-width: 90%;
+            text-align: center;
+            line-height: 1.8;
+            font-size: clamp(12px, 4vw, 18px);
+            color: #ddd;
+            padding: 0 20px;
+            cursor: pointer;
+        }
+
+        .touch-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: none;
+            gap: 12px;
+            z-index: 150;
+            touch-action: manipulation;
+        }
+
+        .touch-controls.show {
+            display: flex;
+        }
+
+        .dpad {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dpad-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .touch-btn {
+            width: clamp(60px, 15vw, 80px);
+            height: clamp(60px, 15vw, 80px);
+            background: rgba(30, 30, 40, 0.85);
+            backdrop-filter: blur(8px);
+            border: 3px solid #ff4444;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(24px, 8vw, 40px);
+            font-weight: bold;
+            color: #ffcc00;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: all 0.05s;
+            box-shadow: 0 0 15px rgba(255,0,0,0.3);
+        }
+
+        .touch-btn:active {
+            transform: scale(0.92);
+            background: #ff2200;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .touch-controls.show {
+                display: flex;
+            }
+        }
+
+        .restart-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: clamp(50px, 12vw, 60px);
+            height: clamp(50px, 12vw, 60px);
+            background: rgba(30, 30, 40, 0.85);
+            backdrop-filter: blur(8px);
+            border: 3px solid #ffaa00;
+            border-radius: 60px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(20px, 6vw, 28px);
+            color: #ffaa00;
+            cursor: pointer;
+            z-index: 150;
+            touch-action: manipulation;
+        }
+
+        .restart-btn.show {
+            display: flex;
+        }
+        
+        .end-canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        #endCanvas {
+            width: min(80vw, 720px);
+            height: auto;
+            border: 4px solid #440000;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-wrapper">
+    <div id="menu">
+        <div class="title">ЗАБЫТЫЕ КЛЮЧИ</div>
+        <div class="subtitle">Найди ключи.<br>Доберись до машины.<br>Не оглядывайся.</div>
+        <button class="btn" id="startBtn">▶ НАЧАТЬ КОШМАР</button>
+    </div>
+
+    <div id="prolog">
+        <div id="prolog-text-container">
+            <p id="prologText"></p>
+        </div>
+        <div class="click-hint">▼ НАЖМИ В ЛЮБОЕ МЕСТО ▼</div>
+    </div>
+
+    <div id="game-container" style="display: none;">
+        <div id="container">
+            <canvas id="canvas" width="720" height="720"></canvas>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <div id="end-screen" style="display: none;">
+        <div class="end-canvas-container">
+            <canvas id="endCanvas" width="720" height="400"></canvas>
+        </div>
+        <div id="endTitle" style="font-size:clamp(18px,5vw,28px); margin:10px 0; text-align:center; padding:0 20px;"></div>
+        <div id="endText" style="max-width:90%; text-align:center; line-height:1.6; margin:15px 0; font-size:clamp(11px,3vw,15px); padding:0 20px;"></div>
+        <button class="btn" id="menuBtn">ВЕРНУТЬСЯ В МЕНЮ</button>
+    </div>
+</div>
+
+<div class="touch-controls" id="touchControls">
+    <div class="dpad">
+        <div class="dpad-row">
+            <div class="touch-btn" data-dy="-1">▲</div>
+        </div>
+        <div class="dpad-row">
+            <div class="touch-btn" data-dx="-1">◀</div>
+            <div class="touch-btn" data-dy="1">▼</div>
+            <div class="touch-btn" data-dx="1">▶</div>
+        </div>
+    </div>
+</div>
+<div class="restart-btn" id="restartBtn">⟳</div>
+
+<script>
+    (function(){
+        // ====================== ОСНОВНЫЕ ПЕРЕМЕННЫЕ ======================
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let GRID = 12;
+        let CELL = 60;
+
+        let player = { x: 2, y: 2 };
+        let car = { x: 9, y: 9 };
+        let keysItem = { x: 5, y: 5, picked: false };
+        let blueCars = [];
+        let monster = { x: -1, y: -1, active: false };
+        let obstacles = [];
+        let allObstacles = [];
+        let moveCount = 0;
+        let awayCount = 0;
+        let hasTeleported = false;
+        let gameOver = false;
+        let gameStarted = false;
+        let animationInterval = null;
+
+        let lastMonsterMove = Date.now();
+        let lastCarDist = 999;
+
+        // ====================== ВСПОМОГАТЕЛЬНЫЕ ======================
+        function isValidPos(x, y) {
+            return x >= 0 && x < GRID && y >= 0 && y < GRID;
+        }
+
+        function distance(a, b) {
+            return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+        }
+
+        function showMessage(text, color = '#ffdd88', time = 2200) {
+            const msg = document.getElementById('message');
+            if (!msg) return;
+            msg.textContent = text;
+            msg.style.color = color;
+            msg.style.opacity = 1;
+            setTimeout(() => {
+                if (msg) msg.style.opacity = 0;
+            }, time);
+        }
+
+        function stopGameLoop() {
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+            }
+        }
+
+        function startGameLoop() {
+            if (animationInterval) stopGameLoop();
+            animationInterval = setInterval(() => {
+                if (gameStarted && !gameOver && monster.active) {
+                    moveMonster();
+                }
+            }, 50);
+        }
+
+        // ====================== ГЕНЕРАЦИЯ ======================
+        function generateLevel() {
+            obstacles = []; blueCars = [];
+            const occupied = new Set();
+            
+            player.x = 2; player.y = 2; occupied.add(`2,2`);
+            car.x = 9; car.y = 9; occupied.add(`9,9`);
+
+            for (let i = 0; i < 8; i++) {
+                let x, y;
+                do { x = Math.floor(Math.random()*GRID); y = Math.floor(Math.random()*GRID); }
+                while (occupied.has(`${x},${y}`));
+                obstacles.push({x,y}); occupied.add(`${x},${y}`);
+            }
+
+            for (let i = 0; i < 7; i++) {
+                let x, y;
+                do { x = Math.floor(Math.random()*GRID); y = Math.floor(Math.random()*GRID); }
+                while (occupied.has(`${x},${y}`));
+                blueCars.push({x,y}); occupied.add(`${x},${y}`);
+            }
+
+            let kx, ky;
+            do {
+                kx = Math.floor(Math.random()*GRID);
+                ky = Math.floor(Math.random()*GRID);
+            } while (occupied.has(`${kx},${ky}`));
+            keysItem = {x: kx, y: ky, picked: false};
+
+            monster.active = false;
+            monster.x = -1; monster.y = -1;
+            moveCount = 0; awayCount = 0; hasTeleported = false;
+            lastCarDist = distance(player, car);
+            allObstacles = [...obstacles, ...blueCars];
+        }
+
+        function isPlayerVisible(x, y) { return Math.max(Math.abs(x - player.x), Math.abs(y - player.y)) <= 1; }
+        function isMonsterVisible(x, y) { return Math.max(Math.abs(x - player.x), Math.abs(y - player.y)) <= 5; }
+
+        // ====================== ОТРИСОВКА ======================
+        function drawCar(x, y, color) {
+            const cx = x * CELL;
+            const cy = y * CELL;
+            const w = CELL;
+            const h = CELL;
+            
+            ctx.fillStyle = color;
+            ctx.fillRect(cx + w*0.1, cy + h*0.3, w*0.8, h*0.4);
+            ctx.fillStyle = '#111';
+            ctx.fillRect(cx + w*0.25, cy + h*0.35, w*0.5, h*0.3);
+            ctx.fillStyle = '#aaddff';
+            ctx.fillRect(cx + w*0.35, cy + h*0.4, w*0.12, h*0.12);
+            ctx.fillRect(cx + w*0.53, cy + h*0.4, w*0.12, h*0.12);
+            ctx.fillStyle = '#111';
+            ctx.fillRect(cx + w*0.25, cy + h*0.65, w*0.18, h*0.12);
+            ctx.fillRect(cx + w*0.57, cy + h*0.65, w*0.18, h*0.12);
+        }
+
+        function drawMonsterSprite(x, y) {
+            const mx = x * CELL;
+            const my = y * CELL;
+            const w = CELL;
+            const h = CELL;
+            
+            ctx.fillStyle = '#d0d0d0';
+            ctx.fillRect(mx + w*0.25, my + h*0.2, w*0.5, h*0.6);
+            ctx.fillStyle = '#b0b0b0';
+            ctx.fillRect(mx + w*0.3, my + h*0.15, w*0.4, h*0.7);
+            
+            const alpha = 0.6 + Math.sin(Date.now()/80)*0.4;
+            ctx.fillStyle = `rgba(255,40,40,${alpha})`;
+            ctx.fillRect(mx + w*0.35, my + h*0.25, w*0.08, w*0.08);
+            ctx.fillRect(mx + w*0.57, my + h*0.25, w*0.08, w*0.08);
+            
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = Math.max(3, w/8);
+            ctx.beginPath();
+            ctx.moveTo(mx + w*0.2, my + h*0.65);
+            ctx.lineTo(mx + w*0.1, my + h*0.85);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(mx + w*0.8, my + h*0.65);
+            ctx.lineTo(mx + w*0.9, my + h*0.85);
+            ctx.stroke();
+        }
+
+        function draw() {
+            if (gameOver || !gameStarted) return;
+            
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#222';
+            for (let i = 0; i < GRID; i++) {
+                for (let j = 0; j < GRID; j++) {
+                    if (isPlayerVisible(i, j) && (i+j)%2===0) {
+                        ctx.fillRect(i*CELL, j*CELL, CELL, CELL);
+                    }
+                }
+            }
+
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = Math.max(2, CELL/15);
+            for (let i = 0; i <= GRID; i++) {
+                ctx.beginPath(); ctx.moveTo(i*CELL, 0); ctx.lineTo(i*CELL, canvas.height); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i*CELL); ctx.lineTo(canvas.width, i*CELL); ctx.stroke();
+            }
+
+            for (let obs of obstacles) {
+                if (isPlayerVisible(obs.x, obs.y)) {
+                    ctx.fillStyle = '#888';
+                    ctx.fillRect(obs.x*CELL + 5, obs.y*CELL + 5, CELL-10, CELL-10);
+                    ctx.fillStyle = '#aaa';
+                    ctx.fillRect(obs.x*CELL + 10, obs.y*CELL + 10, CELL-20, CELL-20);
+                    ctx.fillStyle = '#666';
+                    ctx.fillRect(obs.x*CELL + 15, obs.y*CELL + 15, CELL-30, CELL-30);
+                }
+            }
+
+            for (let bc of blueCars) {
+                if (isPlayerVisible(bc.x, bc.y)) drawCar(bc.x, bc.y, '#0066cc');
+            }
+            if (isPlayerVisible(car.x, car.y)) drawCar(car.x, car.y, '#b30000');
+
+            if (!keysItem.picked && isPlayerVisible(keysItem.x, keysItem.y)) {
+                ctx.fillStyle = '#ffdd00';
+                ctx.fillRect(keysItem.x*CELL + CELL*0.25, keysItem.y*CELL + CELL*0.25, CELL*0.5, CELL*0.5);
+            }
+
+            if (monster.active && isMonsterVisible(monster.x, monster.y)) {
+                drawMonsterSprite(monster.x, monster.y);
+            }
+
+            const px = player.x * CELL + CELL/2;
+            const py = player.y * CELL + CELL/2;
+            ctx.fillStyle = '#00ff44';
+            ctx.beginPath(); ctx.arc(px, py, CELL*0.35, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.arc(px - CELL*0.12, py - CELL*0.1, CELL*0.08, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px + CELL*0.12, py - CELL*0.1, CELL*0.08, 0, Math.PI*2); ctx.fill();
+
+            const grad = ctx.createRadialGradient(px, py, CELL*0.5, px, py, CELL*3);
+            grad.addColorStop(0, 'rgba(255,255,200,0.4)');
+            grad.addColorStop(0.5, 'rgba(70,70,100,0.7)');
+            grad.addColorStop(1, 'rgba(5,5,12,0.98)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (monster.active) {
+                const d = distance(monster, player);
+                if (d <= 3) ctx.fillStyle = 'rgba(180,20,20,0.5)';
+                else if (d <= 5) ctx.fillStyle = 'rgba(180,20,20,0.2)';
+                if (d <= 5) ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        // ====================== ДВИЖЕНИЕ МОНСТРА ======================
+        function getNextMonsterMove() {
+            const dirs = [
+                [Math.sign(player.x - monster.x), Math.sign(player.y - monster.y)],
+                [1, 0], [-1, 0], [0, 1], [0, -1]
+            ];
+            for (let [dx, dy] of dirs) {
+                const nx = monster.x + dx;
+                const ny = monster.y + dy;
+                if (isValidPos(nx, ny) && !allObstacles.some(o => o.x === nx && o.y === ny)) {
+                    return { x: nx, y: ny };
+                }
+            }
+            return null;
+        }
+
+        function moveMonster() {
+            if (!monster.active || gameOver || !gameStarted) return;
+            if (Date.now() - lastMonsterMove < 680) return;
+            let steps = distance(monster, player) <= 3 ? 2 : 1;
+            for (let i = 0; i < steps; i++) {
+                const next = getNextMonsterMove();
+                if (next) { monster.x = next.x; monster.y = next.y; }
+                if (monster.x === player.x && monster.y === player.y) {
+                    gameOver = true;
+                    gameStarted = false;
+                    showEnding(false, false);
+                    return;
+                }
+            }
+            lastMonsterMove = Date.now();
+            draw();
+        }
+
+        // ====================== КОНЦОВКИ ======================
+        function drawEndingImage(type, ctx, w, h) {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, w, h);
+            
+            if (type === 'good') {
+                ctx.fillStyle = '#ffdd88';
+                ctx.fillRect(w*0.25, h*0.55, w*0.5, h*0.25);
+                ctx.fillStyle = '#b30000';
+                ctx.fillRect(w*0.35, h*0.35, w*0.3, h*0.25);
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(w*0.45, h*0.4, w*0.05, h*0.1);
+                ctx.fillRect(w*0.5, h*0.4, w*0.05, h*0.1);
+            } 
+            else if (type === 'secret') {
+                ctx.fillStyle = '#b30000';
+                ctx.fillRect(w*0.25, h*0.45, w*0.5, h*0.3);
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.fillRect(w*0.45, h*0.48, w*0.1, h*0.25);
+                ctx.fillStyle = '#ffdd88';
+                ctx.font = `${h*0.08}px monospace`;
+                ctx.fillText("???", w*0.48, h*0.6);
+            } 
+            else {
+                ctx.fillStyle = '#2a0000';
+                ctx.fillRect(0, 0, w, h);
+                ctx.fillStyle = '#2a2a2a';
+                ctx.fillRect(w*0.4, h*0.3, w*0.2, h*0.4);
+                ctx.fillStyle = '#444';
+                ctx.fillRect(w*0.42, h*0.2, w*0.16, h*0.15);
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(w*0.44, h*0.24, w*0.04, h*0.05);
+                ctx.fillRect(w*0.52, h*0.24, w*0.04, h*0.05);
+                ctx.fillStyle = '#555';
+                ctx.fillRect(w*0.3, h*0.55, w*0.1, h*0.08);
+                ctx.fillRect(w*0.6, h*0.55, w*0.1, h*0.08);
+            }
+        }
+
+        function showEnding(win, isSecret = false) {
+            gameOver = true;
+            gameStarted = false;
+            
+            // Останавливаем игровой цикл
+            stopGameLoop();
+            
+            // Скрываем игровые элементы
+            const gameContainer = document.getElementById('game-container');
+            const touchControls = document.getElementById('touchControls');
+            const restartBtn = document.getElementById('restartBtn');
+            const endScreen = document.getElementById('end-screen');
+            const title = document.getElementById('endTitle');
+            const text = document.getElementById('endText');
+            
+            if (gameContainer) gameContainer.style.display = 'none';
+            if (touchControls) touchControls.classList.remove('show');
+            if (restartBtn) restartBtn.classList.remove('show');
+            
+            // Рисуем финальную картинку
+            const endCanvas = document.getElementById('endCanvas');
+            if (endCanvas) {
+                endCanvas.width = 720;
+                endCanvas.height = 400;
+                const eCtx = endCanvas.getContext('2d');
+                
+                let type = 'bad';
+                if (win && isSecret) type = 'secret';
+                else if (win) type = 'good';
+                else type = 'bad';
+                
+                drawEndingImage(type, eCtx, 720, 400);
+            }
+            
+            // Устанавливаем текст
+            if (win && isSecret) {
+                title.style.color = '#ffdd88';
+                title.textContent = "СЕКРЕТНАЯ КОНЦОВКА";
+                text.innerHTML = "Ты заводишь машину. На пассажирском сиденье кто-то есть... Когда выезжаешь на свет — фигура исчезает. Остаётся только старый больничный браслет с твоим именем.";
+            } else if (win) {
+                title.style.color = '#00ff88';
+                title.textContent = "ТЫ СПАССЯ";
+                text.innerHTML = "Двигатель взревел. Ты вылетаешь на свет. В зеркале заднего вида — пустая парковка. Только пыль и тени...";
+            } else {
+                title.style.color = '#ff4444';
+                title.textContent = "КОНЕЦ";
+                text.innerHTML = "Холодные пальцы смыкаются на шее... Свет гаснет. Последнее, что ты видишь — красные глаза в темноте.";
+            }
+            
+            // Показываем экран концовки
+            if (endScreen) endScreen.style.display = 'flex';
+        }
+
+        function returnToMenu() {
+            // Останавливаем всё
+            stopGameLoop();
+            gameStarted = false;
+            gameOver = false;
+            
+            // Скрываем все экраны
+            const endScreen = document.getElementById('end-screen');
+            const gameContainer = document.getElementById('game-container');
+            const touchControls = document.getElementById('touchControls');
+            const restartBtn = document.getElementById('restartBtn');
+            const prolog = document.getElementById('prolog');
+            const menu = document.getElementById('menu');
+            
+            if (endScreen) endScreen.style.display = 'none';
+            if (gameContainer) gameContainer.style.display = 'none';
+            if (touchControls) touchControls.classList.remove('show');
+            if (restartBtn) restartBtn.classList.remove('show');
+            if (prolog) prolog.style.display = 'none';
+            
+            // Очищаем canvas от лишнего
+            if (canvas) {
+                const tempCtx = canvas.getContext('2d');
+                tempCtx.fillStyle = '#000';
+                tempCtx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // Показываем меню
+            if (menu) {
+                menu.style.display = 'flex';
+                menu.style.opacity = '1';
+            }
+        }
+
+        // ====================== ДВИЖЕНИЕ ИГРОКА ======================
+        function move(dx, dy) {
+            if (gameOver || !gameStarted) return;
+            const nx = player.x + dx, ny = player.y + dy;
+            if (!isValidPos(nx, ny) || allObstacles.some(o => o.x === nx && o.y === ny)) return;
+
+            player.x = nx; player.y = ny;
+            moveCount++;
+
+            if (!keysItem.picked && player.x === keysItem.x && player.y === keysItem.y) {
+                keysItem.picked = true;
+                showMessage("КЛЮЧИ ПОДОБРАНЫ", "#ffdd00");
+            }
+
+            if (player.x === car.x && player.y === car.y) {
+                if (keysItem.picked) {
+                    gameOver = true;
+                    gameStarted = false;
+                    setTimeout(() => showEnding(true, !hasTeleported), 50);
+                } else {
+                    showMessage("ДВЕРЬ ЗАПЕРТА. НУЖНЫ КЛЮЧИ", "#ff6666");
+                }
+                return;
+            }
+
+            const currDist = distance(player, car);
+            if (currDist > lastCarDist) {
+                awayCount++;
+                if (awayCount >= 3) {
+                    hasTeleported = true;
+                    let nx, ny;
+                    do {
+                        nx = Math.floor(Math.random()*GRID);
+                        ny = Math.floor(Math.random()*GRID);
+                    } while (allObstacles.some(o=>o.x===nx&&o.y===ny) || (nx===player.x&&ny===player.y));
+                    car.x = nx; car.y = ny;
+                    awayCount = 0;
+                    showMessage("МАШИНА ИСЧЕЗЛА...", "#ff8800");
+                }
+            } else if (currDist < lastCarDist) {
+                awayCount = 0;
+            }
+            lastCarDist = currDist;
+
+            if (!monster.active && moveCount >= 12) {
+                monster.active = true;
+                do {
+                    monster.x = Math.floor(Math.random()*GRID);
+                    monster.y = Math.floor(Math.random()*GRID);
+                } while (distance(monster, player) < 5 || allObstacles.some(o=>o.x===monster.x&&o.y===monster.y));
+                showMessage("ТЫ НЕ ОДИН...", "#ff4444");
+            }
+
+            draw();
+        }
+
+        // ====================== АДАПТАЦИЯ ======================
+        function updateCanvasSize() {
+            const container = document.getElementById('container');
+            if (!container) return;
+            const size = container.clientWidth;
+            canvas.width = size;
+            canvas.height = size;
+            CELL = size / GRID;
+            if (!gameOver && gameStarted) draw();
+        }
+
+        function initGame() {
+            generateLevel();
+            gameOver = false;
+            gameStarted = true;
+            updateCanvasSize();
+            draw();
+            startGameLoop();
+        }
+
+        function restartGame() {
+            if (gameStarted && !gameOver) {
+                gameOver = true;
+                gameStarted = false;
+            }
+            generateLevel();
+            gameOver = false;
+            gameStarted = true;
+            moveCount = 0;
+            awayCount = 0;
+            hasTeleported = false;
+            lastCarDist = distance(player, car);
+            lastMonsterMove = Date.now();
+            updateCanvasSize();
+            draw();
+            showMessage("ИГРА ПЕРЕЗАПУЩЕНА", "#ffaa00", 1500);
+        }
+
+        // ====================== ПРОЛОГ ======================
+        function startProlog() {
+            const menu = document.getElementById('menu');
+            menu.style.opacity = '0';
+            setTimeout(() => {
+                menu.style.display = 'none';
+                const prolog = document.getElementById('prolog');
+                prolog.style.display = 'flex';
+                document.getElementById('prologText').innerHTML = `Поздний вечер. Ты спускаешься на парковку торгового центра. Ключи выпадают из рук и теряются где-то на парковке. Когда ты поднимаешь голову... вокруг уже не та парковка. Те же машины, те же колонны, но всё словно выцвело. И ты не один. Где-то здесь твоя машина. Найди ключи. Не смотри в темноту.`;
+                
+                const prologContainer = document.getElementById('prolog-text-container');
+                const clickHandler = () => {
+                    prolog.style.opacity = '0';
+                    setTimeout(() => {
+                        prolog.style.display = 'none';
+                        const gameContainer = document.getElementById('game-container');
+                        const touchControls = document.getElementById('touchControls');
+                        const restartBtn = document.getElementById('restartBtn');
+                        if (gameContainer) gameContainer.style.display = 'flex';
+                        if (touchControls) touchControls.classList.add('show');
+                        if (restartBtn) restartBtn.classList.add('show');
+                        initGame();
+                    }, 1300);
+                    prologContainer.removeEventListener('click', clickHandler);
+                };
+                prologContainer.addEventListener('click', clickHandler);
+            }, 800);
+        }
+
+        // ====================== УПРАВЛЕНИЕ ======================
+        function handleKeyDown(e) {
+            if (!gameStarted || gameOver) return;
+            let dx = 0, dy = 0;
+            const key = e.key;
+            if (key === 'ArrowUp') dy = -1;
+            else if (key === 'ArrowDown') dy = 1;
+            else if (key === 'ArrowLeft') dx = -1;
+            else if (key === 'ArrowRight') dx = 1;
+            else if (key === 'w' || key === 'W') dy = -1;
+            else if (key === 's' || key === 'S') dy = 1;
+            else if (key === 'a' || key === 'A') dx = -1;
+            else if (key === 'd' || key === 'D') dx = 1;
+            if (dx !== 0 || dy !== 0) {
+                e.preventDefault();
+                move(dx, dy);
+            }
+        }
+
+        // ====================== ЗАПУСК ======================
+        window.addEventListener('resize', () => {
+            if (gameStarted && !gameOver) updateCanvasSize();
+        });
+
+        document.getElementById('startBtn').addEventListener('click', startProlog);
+        const menuBtn = document.getElementById('menuBtn');
+        if (menuBtn) {
+            menuBtn.addEventListener('click', returnToMenu);
+        }
+        const restartBtnEl = document.getElementById('restartBtn');
+        if (restartBtnEl) {
+            restartBtnEl.addEventListener('click', () => restartGame());
+        }
+        document.addEventListener('keydown', handleKeyDown);
+
+        document.querySelectorAll('.touch-btn').forEach(btn => {
+            const handler = (e) => {
+                e.preventDefault();
+                const dx = parseInt(btn.dataset.dx) || 0;
+                const dy = parseInt(btn.dataset.dy) || 0;
+                if ((dx !== 0 || dy !== 0) && gameStarted && !gameOver) move(dx, dy);
+            };
+            btn.addEventListener('click', handler);
+            btn.addEventListener('touchstart', handler);
+        });
+    })();
+</script>
+</body>
+</html>
